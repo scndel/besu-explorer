@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alethio-explorer-deployment
+  labels:
+    app: alethio-explorer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alethio-explorer
+  template:
+    metadata:
+      labels:
+        app: alethio-explorer
+    spec:
+      containers:
+      - name: alethio-exporer
+        image: alethio/ethereum-lite-explorer:latest
+        ports: 
+        - containerPort: 80
+          name: http
+        env:
+        - name: APP_NODE_URL
+          value: http://besu-node
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+        #TODO  
+        #livenessProbe:
+         # httpGet:
+          #  path: /health-check
+           #   port: 80
+          #initialDelaySeconds: 10
+          #periodSeconds: 5
