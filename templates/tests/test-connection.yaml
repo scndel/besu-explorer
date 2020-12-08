@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "besu-explorer.fullname" . }}-test-connection"
+  labels:
+    {{- include "besu-explorer.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "besu-explorer.fullname" . }}:{{ .Values.besunode.service.port }}']
+  restartPolicy: Never

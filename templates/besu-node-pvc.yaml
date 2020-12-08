@@ -1,12 +1,33 @@
+{{- if not .Values.besunode.statefulSet.enabled -}}
+{{- if and .Values.besunode.enabled .Values.besunode.persistentVolume.enabled -}}
+{{- if not .Values.besunode.persistentVolume.existingClaim -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: besu-node-pvc
+  {{- if .Values.besunode.persistentVolume.annotations }}
+  annotations:
+{{ toYaml .Values.besunode.persistentVolume.annotations | indent 4 }}
+  {{- end }}
   labels:
-    app: besu-node
+    {{- include "besu-explorer.labels" . | nindent 4 }}
+  name: {{ template "besu-explorer.fullname" . }}
+{{ include "besunode.namespace" . | indent 2 }}
 spec:
   accessModes:
-    - ReadWriteOnce
+{{ toYaml .Values.besunode.persistentVolume.accessModes | indent 4 }}
+{{- if .Values.besunode.persistentVolume.storageClass }}
+{{- if (eq "-" .Values.besunode.persistentVolume.storageClass) }}
+  storageClassName: ""
+{{- else }}
+  storageClassName: "{{ .Values.besunode.persistentVolume.storageClass }}"
+{{- end }}
+{{- end }}
+{{- if .Values.besunode.persistentVolume.volumeBindingMode }}
+  volumeBindingModeName: "{{ .Values.besunode.persistentVolume.volumeBindingMode }}"
+{{- end }}
   resources:
     requests:
-      storage: 10Gi
+      storage: "{{ .Values.besunode.persistentVolume.size }}"
+{{- end -}}
+{{- end -}}
+{{- end -}}

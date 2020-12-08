@@ -1,50 +1,78 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: besu-node-deployment
+  name: {{ include "besunode.fullname" . }}
   labels:
-    app: besu-node
+    {{- include "besunode.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+{{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+{{- end }}
   selector:
     matchLabels:
-      app: besu-node
+      {{- include "besunode.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       labels:
-        app: besu-node
+        {{- include "besunode.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "test-helm.serviceAccountName" . }}
       securityContext:
-        fsGroup: 1000
+        fsGroup: 2000
       containers:
-      - name: besu-node
-        image: hyperledger/besu
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 8545
-          name: rpc-http
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "1024Mi"
-            cpu: "1000m"
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
         env:
         - name: BESU_NETWORK
           value: "goerli"
         args: ["--rpc-http-enabled","--data-path=/var/lib/besu"]
         volumeMounts:
         - name: besu-node-persistent-storage
-          mountPath: /var/lib/besu
-        #TODO
-        #livenessProbe:
-         # httpGet:
-          #  path: /
-           # port: 8545
-          #initialDelaySeconds: 20
-          #periodSeconds: 10
+          mountPath: "{{ .Values.besunode.persistentVolume.mountPath }}"
+          subPath: "{{ .Values.alertmanager.persistentVolume.subPath }}"
       volumes:
       - name: besu-node-persistent-storage
-        persistentVolumeClaim:
-          claimName: besu-node-pvc
+      {{- if .Values.alertmanager.persistentVolume.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ if .Values.alertmanager.persistentVolume.existingClaim }}{{ .Values.alertmanager.persistentVolume.existingClaim }}{{- else }}{{ template "prometheus.alertmanager.fullname" . }}{{- end }}
+        {{- else }}
+          emptyDir: {}
+        {{- end -}}
+
+            {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
