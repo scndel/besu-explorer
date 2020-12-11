@@ -1,7 +1,8 @@
-# Besu node & althio lite explorer
+# Besu node & alethio lite explorer
 
 ## Besu node on Goerli testnet
-`helm install besunode ./besunode`
+`helm install besunode ./besunode -n besu`
 
 ## Alethio lite explorer
-`helm install explorer ./explorer`
+First provide ingress values in custom-values.yaml
+`helm install explorer ./explorer -f custom-values.yaml -n besu`
